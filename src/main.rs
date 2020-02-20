@@ -1,13 +1,18 @@
-extern crate mongodb;
 extern crate csv;
+extern crate mongodb;
+use mongodb::{Bson, bson, doc};
+use mongodb::{
+    common::{ReadMode, ReadPreference},
+    db::ThreadedDatabase,
+    Client, ClientOptions, ThreadedClient,
+};
+// use mongodb::options::FindOptions;
+use serde::Deserialize;
 use std::error::Error;
-use std::process;
 use std::fs::File;
 use std::io::BufReader;
-use serde::Deserialize;
-use mongodb::{bson, doc};
-use mongodb::{Client, ClientOptions, ThreadedClient, db::ThreadedDatabase, common::{ReadPreference, ReadMode}};
-// use csv::Reader;
+use std::io::{stdin, stdout, Write};
+use std::process;
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
@@ -19,32 +24,96 @@ struct Record {
     Longitude: String,
 }
 
-fn mongodb_driver(file: File) -> Result<(), Box<dyn Error>>{
+fn mongodb_driver() -> std::sync::Arc<mongodb::ClientInner> {
     let mut options = ClientOptions::new();
     options.read_preference = Some(ReadPreference::new(ReadMode::PrimaryPreferred, None));
 
-    let client = Client::with_uri_and_options("mongodb://localhost:27017/foo", options).unwrap();
-    let coll = client.db("foo").collection("bar");
-    coll.drop().unwrap();
+    let client = Client::with_uri_and_options("mongodb://localhost:27017/foo", options).expect("Failed to initialize client.");
+    return client;
+}
 
-    let mut rdr = csv::Reader::from_reader(BufReader::new(file.try_clone().unwrap()));
+fn db() -> std::sync::Arc<mongodb::db::DatabaseInner> {
+    let client = mongodb_driver();
+    let db = client.db("foo");
+    return db;
+}
+
+fn coll() -> mongodb::coll::Collection {
+    let coll = db().collection("bar");
+    return coll;
+}
+
+fn open_file() {
+    if let Err(err) = insert(File::open("csv_test.csv").expect("Failed to read csv.")) {
+        println!("error running example: {}", err);
+        process::exit(1);
+    }
+}
+
+fn insert(file: File) -> Result<(), Box<dyn Error>> {
+    let coll = coll();
+    coll.drop().unwrap();
+    let mut rdr = read_file(file);
     for result in rdr.deserialize() {
-        // The iterator yields Result<StringRecord, Error>, so we check the
-        // error here.
         let record: Record = result?;
         coll.insert_one(doc! { "City": record.City, "State": record.State, "Population": record.Population, "Latitude": record.Latitude, "Longitude": record.Longitude }, None).unwrap();
-    }
-
-
-    for doc in coll.find(None, None).unwrap() {
-        println!("{}", doc.unwrap());
     }
     Ok(())
 }
 
+fn read_file(file: File) -> csv::Reader<std::io::BufReader<std::fs::File>> {
+    return csv::Reader::from_reader(BufReader::new(file.try_clone().unwrap()));
+}
+
+fn display() {
+    let coll = coll();
+    let cursor = coll.find(None, None).unwrap();
+    for doc in cursor {
+        println!("{}", doc.unwrap());
+    }
+}
+
+fn search(find: &str) {
+    let coll = coll();
+    let cursor = coll.find(None, None).unwrap();
+    for doc in cursor {
+        println!("{}", doc.unwrap());
+    }
+}
+
+fn user_input () -> std::string::String{
+    stdout().flush().unwrap();
+    let mut input = String::new();
+    stdin().read_line(&mut input).expect("Failed to read line");
+    return input;
+}
+
 fn main() {
-    if let Err(err) = mongodb_driver(File::open("csv_test.csv").unwrap()) {
-        println!("error running example: {}", err);
-        process::exit(1);
+    loop {
+        // use the > as the prompt
+        println!("\n1. Insert to MongoDB");
+        println!("2. Display All");
+        println!("3. Search");
+        println!("0. Exit");
+
+        print!("\n> ");
+
+        let input = user_input();
+        let command = input.trim().split_whitespace().next().unwrap();
+
+        match &*command {
+            "1" => open_file(),
+            "2" => display(),
+            "3" => {
+                print!("\nPlease enter: ");
+                let find_input = user_input();
+                let find = find_input.trim().split_whitespace().next().unwrap();
+                search(find);
+            },
+            "0" => return,
+            "q" => return,
+            "quit" => return,
+            _ => println!("[{}]: command not found, Please try again!", command),
+        }
     }
 }
