@@ -1,11 +1,7 @@
 extern crate csv;
 extern crate mongodb;
-use mongodb::{Bson, bson, doc};
-use mongodb::{
-    common::{ReadMode, ReadPreference},
-    db::ThreadedDatabase,
-    Client, ClientOptions, ThreadedClient,
-};
+use bson::{bson, doc};
+use mongodb::{options::ClientOptions, Client};
 // use mongodb::options::FindOptions;
 use serde::Deserialize;
 use std::error::Error;
@@ -24,21 +20,20 @@ struct Record {
     Longitude: String,
 }
 
-fn mongodb_driver() -> std::sync::Arc<mongodb::ClientInner> {
-    let mut options = ClientOptions::new();
-    options.read_preference = Some(ReadPreference::new(ReadMode::PrimaryPreferred, None));
-
-    let client = Client::with_uri_and_options("mongodb://localhost:27017/foo", options).expect("Failed to initialize client.");
+fn mongodb_driver() -> mongodb::Client {
+    let mut client_options = ClientOptions::parse("mongodb://localhost:27017").unwrap();
+    client_options.app_name = Some("My app".to_string());
+    let client = Client::with_options(client_options).unwrap();
     return client;
 }
 
-fn db() -> std::sync::Arc<mongodb::db::DatabaseInner> {
+fn db() -> mongodb::Database {
     let client = mongodb_driver();
-    let db = client.db("foo");
+    let db = client.database("foo");
     return db;
 }
 
-fn coll() -> mongodb::coll::Collection {
+fn coll() -> mongodb::Collection {
     let coll = db().collection("bar");
     return coll;
 }
@@ -52,7 +47,9 @@ fn open_file() {
 
 fn insert(file: File) -> Result<(), Box<dyn Error>> {
     let coll = coll();
-    coll.drop().unwrap();
+    coll.delete_many(doc! {}, None)
+        .ok()
+        .expect("Failed to delete documents.");
     let mut rdr = read_file(file);
     for result in rdr.deserialize() {
         let record: Record = result?;
@@ -75,9 +72,17 @@ fn display() {
 
 fn search(find: &str) {
     let coll = coll();
-    let cursor = coll.find(None, None).unwrap();
-    for doc in cursor {
-        println!("{}", doc.unwrap());
+    let filter = doc! { "City": find };
+    // let find_options = FindOptions::builder()
+    //     .sort(doc! { "State": 1 })
+    //     .build();
+    let cursor = coll.find(filter, None).unwrap();
+
+    for result in cursor {
+        match result {
+            Ok(document) => println!("Document: {:?}", document),
+            Err(e) => println!("Error! {:?}", e),
+        }
     }
 }
 
@@ -107,7 +112,7 @@ fn main() {
             "3" => {
                 print!("\nPlease enter: ");
                 let find_input = user_input();
-                let find = find_input.trim().split_whitespace().next().unwrap();
+                let find = &find_input;
                 search(find);
             },
             "0" => return,
