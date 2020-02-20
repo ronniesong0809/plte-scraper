@@ -23,19 +23,16 @@ struct Record {
 fn mongodb_driver() -> mongodb::Client {
     let mut client_options = ClientOptions::parse("mongodb://localhost:27017").unwrap();
     client_options.app_name = Some("My app".to_string());
-    let client = Client::with_options(client_options).unwrap();
-    return client;
+    Client::with_options(client_options).unwrap()
 }
 
 fn db() -> mongodb::Database {
     let client = mongodb_driver();
-    let db = client.database("foo");
-    return db;
+    client.database("foo")
 }
 
 fn coll() -> mongodb::Collection {
-    let coll = db().collection("bar");
-    return coll;
+    db().collection("bar")
 }
 
 fn open_file() {
@@ -47,9 +44,7 @@ fn open_file() {
 
 fn insert(file: File) -> Result<(), Box<dyn Error>> {
     let coll = coll();
-    coll.delete_many(doc! {}, None)
-        .ok()
-        .expect("Failed to delete documents.");
+    coll.delete_many(doc! {}, None).expect("Failed to delete documents.");
     let mut rdr = read_file(file);
     for result in rdr.deserialize() {
         let record: Record = result?;
@@ -59,7 +54,7 @@ fn insert(file: File) -> Result<(), Box<dyn Error>> {
 }
 
 fn read_file(file: File) -> csv::Reader<std::io::BufReader<std::fs::File>> {
-    return csv::Reader::from_reader(BufReader::new(file.try_clone().unwrap()));
+    csv::Reader::from_reader(BufReader::new(file.try_clone().unwrap()))
 }
 
 fn display() {
@@ -90,7 +85,7 @@ fn user_input () -> std::string::String{
     stdout().flush().unwrap();
     let mut input = String::new();
     stdin().read_line(&mut input).expect("Failed to read line");
-    return input;
+    input
 }
 
 fn main() {
@@ -112,9 +107,9 @@ fn main() {
             "3" => {
                 print!("\nPlease enter: ");
                 let find_input = user_input();
-                let find = &find_input;
+                let find = find_input.trim();
                 search(find);
-            },
+            }
             "0" => return,
             "q" => return,
             "quit" => return,
