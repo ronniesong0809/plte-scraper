@@ -1,7 +1,7 @@
 [package]
-name = "rust_csv"
-version = "0.1.0"
-authors = ["Mingjue <mingjue@vt.edu>"]
+name = "plte-cli"
+version = "0.2.0"
+authors = ["Mingjue <mingjue@vt.edu>", "Ronnie Song <ronniesong0809@gmail.com>", "Boxuan Zhang <pedanbox@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
