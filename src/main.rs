@@ -13,11 +13,14 @@ use std::process;
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
 struct Record {
-    City: String,
-    State: String,
-    Population: String,
-    Latitude: String,
-    Longitude: String,
+    summary: String,
+    location: String,
+    days_of_week: String,
+    month: String,
+    day: String,
+    year: String,
+    start: String,
+    end: String,
 }
 
 fn mongodb_driver() -> mongodb::Client {
@@ -48,7 +51,9 @@ fn insert(file: File) -> Result<(), Box<dyn Error>> {
     let mut rdr = read_file(file);
     for result in rdr.deserialize() {
         let record: Record = result?;
-        coll.insert_one(doc! { "City": record.City, "State": record.State, "Population": record.Population, "Latitude": record.Latitude, "Longitude": record.Longitude }, None).unwrap();
+        coll.insert_one(doc! { "summary": record.summary, "location": record.location, 
+        "days_of_week": record.days_of_week, "month": record.month, 
+        "day": record.day, "year": record.year, "start": record.start, "end": record.end }, None).unwrap();
     }
     Ok(())
 }
@@ -67,7 +72,7 @@ fn display() {
 
 fn search(find: &str) {
     let coll = coll();
-    let filter = doc! { "City": find };
+    let filter = doc! { "summary": find };
     // let find_options = FindOptions::builder()
     //     .sort(doc! { "State": 1 })
     //     .build();
@@ -108,6 +113,7 @@ fn main() {
                 print!("\nPlease enter: ");
                 let find_input = user_input();
                 let find = find_input.trim();
+                // print!("{}", find);
                 search(find);
             }
             "0" => return,
