@@ -1,5 +1,6 @@
 extern crate csv;
 extern crate mongodb;
+extern crate select;
 use bson::{bson, doc};
 use mongodb::{options::ClientOptions, Client};
 // use mongodb::options::FindOptions;
@@ -9,6 +10,10 @@ use std::fs::File;
 use std::io::BufReader;
 use std::io::{stdin, stdout, Write};
 use std::process;
+use select::document::Document;
+#[allow(unused_imports)]
+use select::predicate::{Predicate, Attr, Class, Name};
+use csv::Writer;
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
@@ -21,6 +26,37 @@ struct Record {
     year: String,
     start: String,
     end: String,
+}
+
+#[allow(bare_trait_objects)]
+pub fn to_csv() -> Result<(), Box<Error>>  {
+    let document = Document::from(include_str!("Calendar.html"));
+    let mut wtr = Writer::from_path("foo.csv")?;
+    wtr.write_record(&["summary", "location", "days_of_week", "month", "day", "year", "start", "end"])?;
+
+    println!("# Top 10 Event");
+    for node in document.find(Class("vevent")) {
+        let summary = node.find(Class("summary")).next().unwrap().text();
+        let location = node.find(Class("location")).next().unwrap().text();
+        let days_of_week = node.find(Class("day_of_week")).next().unwrap().text();
+        let temp_date = node.find(Class("list_date")).next().unwrap().last_child().unwrap().text();
+        let mut date = temp_date.split_ascii_whitespace();
+        let month = date.next().unwrap();
+        let day = date.next().unwrap();
+        let year = date.next().unwrap();
+        let start = node.find(Class("dtstart")).next().unwrap().text();
+        let end = node.find(Class("dtend")).next().unwrap().text();
+
+        println!("     summary: {}", summary);
+        println!("    location: {}", location);
+        println!("days_of_week: {}", days_of_week);
+        println!("        date: {} {} {}", month, day, year);
+        println!("        time: {} - {}", start, end);
+        println!("");
+        wtr.write_record(&[summary, location, days_of_week, month.to_string(), day.to_string(), year.to_string(), start, end])?;
+    }
+    wtr.flush()?;
+    Ok(())
 }
 
 fn mongodb_driver() -> mongodb::Client {
@@ -51,9 +87,7 @@ fn insert(file: File) -> Result<(), Box<dyn Error>> {
     let mut rdr = read_file(file);
     for result in rdr.deserialize() {
         let record: Record = result?;
-        coll.insert_one(doc! { "summary": record.summary, "location": record.location, 
-        "days_of_week": record.days_of_week, "month": record.month, 
-        "day": record.day, "year": record.year, "start": record.start, "end": record.end }, None).unwrap();
+        coll.insert_one(doc! { "summary": record.summary, "location": record.location, "days_of_week": record.days_of_week, "month": record.month, "day": record.day, "year": record.year, "start": record.start, "end": record.end }, None).unwrap();
     }
     Ok(())
 }
@@ -96,9 +130,10 @@ fn user_input () -> std::string::String{
 fn main() {
     loop {
         // use the > as the prompt
-        println!("\n1. Insert to MongoDB");
-        println!("2. Display All");
-        println!("3. Search");
+        println!("\n1. Save to CSV");
+        println!("2. Insert to MongoDB");
+        println!("3. Display All");
+        println!("4. Search");
         println!("0. Exit");
 
         print!("\n> ");
@@ -107,9 +142,10 @@ fn main() {
         let command = input.trim().split_whitespace().next().unwrap();
 
         match &*command {
-            "1" => open_file(),
-            "2" => display(),
-            "3" => {
+            "1" => to_csv().unwrap(),
+            "2" => open_file(),
+            "3" => display(),
+            "4" => {
                 print!("\nPlease enter: ");
                 let find_input = user_input();
                 let find = find_input.trim();
