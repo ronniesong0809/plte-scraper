@@ -197,6 +197,14 @@ fn user_input() -> std::string::String {
 }
 
 fn main() {
+    println!("
+    __________ .____   ______________________           _________  .__   .__
+    \\______   \\|    |  \\__    ___/\\_   _____/           \\_   ___ \\ |  |  |__|
+     |     ___/|    |    |    |    |    __)_    ______  /    \\  \\/ |  |  |  |
+     |    |    |    |___ |    |    |        \\  /_____/  \\     \\____|  |__|  |
+     |____|    |_______ \\|____|   /_______  /            \\______  /|____/|__|
+                       \\/                 \\/                    \\/           ");
+    println!("\t\t\t  - Portland Local Tech Events Command-line Tool Sets.");
     loop {
         println!("\n1. Scraping most recent events data");
         println!("2. Save events data to CSV");
