@@ -2,12 +2,9 @@ extern crate csv;
 extern crate mongodb;
 extern crate select;
 use bson::{bson, doc};
-use mongodb::{options::ClientOptions, Client};
-// use mongodb::options::FindOptions;
 use csv::Writer;
-use select::document::Document;
-#[allow(unused_imports)]
-use select::predicate::{Attr, Class, Name, Predicate};
+use mongodb::{ options::ClientOptions, Client };
+use select::{ document::Document, predicate::Class };
 use serde::Deserialize;
 use std::error::Error;
 use std::fs::File;
@@ -28,9 +25,33 @@ struct Record {
     end: String,
 }
 
+#[tokio::main]
+async fn scraping() -> Result<reqwest::StatusCode, Box<dyn std::error::Error>> {
+    let response = reqwest::get("https://calagator.org").await?;
+    let status = response.status();
+    let body = response.text().await?;
+    // println!("{:?}", status);
+    // println!("{:?}", body);
+    let mut file = File::create("assets/Calendar.html")?;
+    file.write_all(body.as_bytes())?;
+    file.sync_all()?;
+    Ok(status)
+}
+
+fn scraping_event() {
+    let html = scraping();
+    match html {
+        Ok(v) => {
+            println!("\nResponse code: {}", v);
+            println!("Successfully scraped events to assets/Calendar.html");
+        }
+        Err(e) => println!("error scraping events: {}", e),
+    }
+    process::exit(1);
+}
+
 #[allow(bare_trait_objects)]
 pub fn parse_date() -> Result<String, Box<Error>> {
-    let document = Document::from(include_str!("../assets/Calendar.html"));
     let mut wtr = Writer::from_path("assets/Calendar.csv")?;
     wtr.write_record(&[
         "summary",
@@ -44,6 +65,7 @@ pub fn parse_date() -> Result<String, Box<Error>> {
     ])?;
 
     let mut count = 0;
+    let document = Document::from(include_str!("../assets/Calendar.html"));
     for node in document.find(Class("vevent")) {
         let summary = node.find(Class("summary")).next().unwrap().text();
         let location = node.find(Class("location")).next().unwrap().text();
@@ -80,10 +102,7 @@ pub fn parse_date() -> Result<String, Box<Error>> {
         count += 1;
     }
     wtr.flush()?;
-    Ok(format!(
-        "\nSuccessfully saved {} events to assets/Calendar.csv",
-        count
-    ))
+    Ok(format!("\nSuccessfully saved {} events to assets/Calendar.csv", count))
 }
 
 fn save_to_csv() {
@@ -112,7 +131,26 @@ fn coll() -> mongodb::Collection {
     db().collection("bar")
 }
 
-fn open_file() {
+fn read_file(file: File) -> csv::Reader<std::io::BufReader<std::fs::File>> {
+    csv::Reader::from_reader(BufReader::new(file.try_clone().unwrap()))
+}
+
+fn insert(file: File) -> Result<String, Box<dyn Error>> {
+    let coll = coll();
+    coll.delete_many(doc! {}, None)
+        .expect("Failed to delete documents.");
+
+    let mut count = 0;
+    let mut rdr = read_file(file);
+    for result in rdr.deserialize() {
+        let record: Record = result?;
+        coll.insert_one(doc! { "summary": record.summary, "location": record.location, "days_of_week": record.days_of_week, "month": record.month, "day": record.day, "year": record.year, "start": record.start, "end": record.end }, None).unwrap();
+        count += 1;
+    }
+    Ok(format!("\nSuccessfully saved {} events to MongoDB", count))
+}
+
+fn import_to_mongodb() {
     let status = insert(File::open("assets/Calendar.csv").expect("Failed to read csv."));
     match status {
         Ok(v) => println!("{}", v),
@@ -121,22 +159,6 @@ fn open_file() {
             process::exit(1);
         }
     }
-}
-
-fn insert(file: File) -> Result<&'static str, Box<dyn Error>> {
-    let coll = coll();
-    coll.delete_many(doc! {}, None)
-        .expect("Failed to delete documents.");
-    let mut rdr = read_file(file);
-    for result in rdr.deserialize() {
-        let record: Record = result?;
-        coll.insert_one(doc! { "summary": record.summary, "location": record.location, "days_of_week": record.days_of_week, "month": record.month, "day": record.day, "year": record.year, "start": record.start, "end": record.end }, None).unwrap();
-    }
-    Ok("\nSuccessfully saved to MongoDB")
-}
-
-fn read_file(file: File) -> csv::Reader<std::io::BufReader<std::fs::File>> {
-    csv::Reader::from_reader(BufReader::new(file.try_clone().unwrap()))
 }
 
 fn display() {
@@ -176,23 +198,25 @@ fn user_input() -> std::string::String {
 
 fn main() {
     loop {
-        // use the > as the prompt
-        println!("\n1. Save to CSV");
-        println!("2. Insert to MongoDB");
-        println!("3. Display All");
-        println!("4. Search");
+        println!("\n1. Scraping most recent events data");
+        println!("2. Save events data to CSV");
+        println!("3. Import CSV to MongoDB");
+        println!("4. Read events from MongoDB");
+        println!("5. Search events from MongoDB");
         println!("0. Exit");
 
+        // use the > as the prompt
         print!("\n> ");
 
         let input = user_input();
         let command = input.trim().split_whitespace().next().unwrap();
 
         match &*command {
-            "1" => save_to_csv(),
-            "2" => open_file(),
-            "3" => display(),
-            "4" => search(),
+            "1" => scraping_event(),
+            "2" => save_to_csv(),
+            "3" => import_to_mongodb(),
+            "4" => display(),
+            "5" => search(),
             "0" => return,
             "q" => return,
             "quit" => return,
