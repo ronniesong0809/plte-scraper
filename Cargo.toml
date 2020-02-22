@@ -14,6 +14,7 @@ bson = "0.14.0"
 reqwest = { version = "0.10", features = ["json"] }
 tokio = { version = "0.2", features = ["full"] }
 select = "0.4.3"
+serde_json = "1.0.48"
 
 [dev-dependencies]
 serde = { version = "1.0.55", features = ["derive"] }

@@ -50,6 +50,44 @@ fn scraping_event() {
     process::exit(1);
 }
 
+#[derive(Debug, Deserialize)]
+#[allow(non_snake_case)]
+struct Record2 {
+    id: String,
+    title: String,
+    description: String,
+    url: String,
+    start_time: String,
+    end_time: String,
+    venue_id: String,
+    venue_details: String,
+}
+
+#[tokio::main]
+async fn scraping2() -> Result<reqwest::StatusCode, Box<dyn std::error::Error>> {
+    let response = reqwest::get("https://calagator.org/events.json").await?;
+    let status = response.status();
+    let body = response.text().await?;
+    // println!("{:?}", status);
+    // println!("{:?}", body);
+    let mut file = File::create("assets/Calendar.json")?;
+    file.write_all(body.as_bytes())?;
+    file.sync_all()?;
+    Ok(status)
+}
+
+fn scraping_event2() {
+    let html = scraping();
+    match html {
+        Ok(v) => {
+            println!("\nResponse code: {}", v);
+            println!("Successfully scraped events to assets/Calendar.json");
+        }
+        Err(e) => println!("error scraping events: {}", e),
+    }
+    process::exit(1);
+}
+
 #[allow(bare_trait_objects)]
 pub fn parse_date() -> Result<String, Box<Error>> {
     let mut wtr = Writer::from_path("assets/Calendar.csv")?;
@@ -116,6 +154,43 @@ fn save_to_csv() {
     }
 }
 
+#[allow(bare_trait_objects)]
+fn parse_date2() -> Result<String, Box<Error>> {
+    let file = File::open("assets/Calendar.json").expect("unable to open Calendar.json");
+    let data: serde_json::Value = serde_json::from_reader(file).expect("it is not a json file");
+
+    let mut wtr = Writer::from_path("assets/Calendar.csv")?;
+    wtr.write_record(&["id","title","description","url","start_time","end_time","venue_id","venue_details"])?;
+
+    let mut count = 0;
+    for i in 0..100{
+        let id = data[i].get("id").expect("unable to find id").to_string();
+        let title = data[i].get("title").expect("unable to find title").to_string();
+        let description = data[i].get("description").expect("unable to find description").to_string();
+        let url = data[i].get("url").expect("unable to find url").to_string();
+        let start_time = data[i].get("start_time").expect("unable to find start_time").to_string();
+        let end_time = data[i].get("end_time").expect("unable to find end_time").to_string();
+        let venue_id = data[i].get("venue_id").expect("unable to find venue_id").to_string();
+        let venue_details = data[i].get("venue_details").expect("unable to find venue_details").to_string();
+        // println!("{}", description);
+        wtr.write_record(&[id,title,description,url,start_time,end_time,venue_id,venue_details])?;
+        count += 1;
+    }
+    wtr.flush()?;
+    Ok(format!("\nSuccessfully saved {} events to assets/Calendar.csv", count))
+}
+
+fn save_to_csv2() {
+    let status = parse_date2();
+    match status {
+        Ok(v) => println!("{}", v),
+        Err(e) => {
+            println!("error running example: {}", e);
+            process::exit(1);
+        }
+    }
+}
+
 fn mongodb_driver() -> mongodb::Client {
     let mut client_options = ClientOptions::parse("mongodb://localhost:27017").unwrap();
     client_options.app_name = Some("My app".to_string());
@@ -151,6 +226,32 @@ fn insert(file: File) -> Result<String, Box<dyn Error>> {
 }
 
 fn import_to_mongodb() {
+    let status = insert(File::open("assets/Calendar.csv").expect("Failed to read csv."));
+    match status {
+        Ok(v) => println!("{}", v),
+        Err(e) => {
+            println!("error running example: {}", e);
+            process::exit(1);
+        }
+    }
+}
+
+fn insert2(file: File) -> Result<String, Box<dyn Error>> {
+    let coll = coll();
+    coll.delete_many(doc! {}, None)
+        .expect("Failed to delete documents.");
+
+    let mut count = 0;
+    let mut rdr = read_file(file);
+    for result in rdr.deserialize() {
+        let record: Record2 = result?;
+        coll.insert_one(doc! { "id": record.id, "title": record.title, "description": record.description, "url": record.url, "start_time": record.start_time, "end_time": record.end_time, "venue_id": record.venue_id, "venue_details": record.venue_details }, None).unwrap();
+        count += 1;
+    }
+    Ok(format!("\nSuccessfully saved {} events to MongoDB", count))
+}
+
+fn import_to_mongodb2() {
     let status = insert(File::open("assets/Calendar.csv").expect("Failed to read csv."));
     match status {
         Ok(v) => println!("{}", v),
@@ -206,7 +307,7 @@ fn main() {
                        \\/                 \\/                    \\/           ");
     println!("\t\t\t  - Portland Local Tech Events Command-line Tool Sets.");
     loop {
-        println!("\n1. Scraping most recent events data");
+        println!("\n1. Scraping home page events data");
         println!("2. Save events data to CSV");
         println!("3. Import CSV to MongoDB");
         println!("4. Read events from MongoDB");
@@ -225,6 +326,9 @@ fn main() {
             "3" => import_to_mongodb(),
             "4" => display(),
             "5" => search(),
+            "6" => scraping_event2(),
+            "7" => save_to_csv2(),
+            "8" => import_to_mongodb2(),
             "0" => return,
             "q" => return,
             "quit" => return,
