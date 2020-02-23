@@ -1,6 +1,6 @@
 # PLET-Cli
-[![Build Status](https://travis-ci.com/ronniesong0809/rust-project.svg?branch=master)](https://travis-ci.com/ronniesong0809/rust-project)
-![Rust](https://github.com/ronniesong0809/rust-project/workflows/Rust/badge.svg)
+[![Build Status](https://travis-ci.com/ronniesong0809/plte-cli.svg?branch=master)](https://travis-ci.com/ronniesong0809/plte-cli)
+![Rust](https://github.com/ronniesong0809/plte-cli/workflows/Rust/badge.svg)
 
 Copyright (c) 2020 Ronnie Song
 
@@ -29,8 +29,8 @@ $ cargo run
 -  Read Cookbook - csv records: [here](https://rust-lang-nursery.github.io/rust-cookbook/encoding/csv.html#csv-processing)
 -  Official MongoDB Rust Driver: [here](https://www.mongodb.com/blog/post/announcing-the-official-mongodb-rust-driver)
 -  Ascii Art by @[patorjk](https://github.com/patorjk?tab=repositories): [here](http://patorjk.com/)
--  Dependencies: [here](https://github.com/ronniesong0809/rust-project/blob/master/Cargo.toml)
+-  Dependencies: [here](https://github.com/ronniesong0809/plte-cli/blob/master/Cargo.toml)
 
 ## License
 
-This program is licensed under the "MIT License". Please see the file [`LICENSE`](https://github.com/ronniesong0809/rust-project/blob/master/LICENSE) in the source distribution of this software for license terms.
+This program is licensed under the "MIT License". Please see the file [`LICENSE`](https://github.com/ronniesong0809/plte-cli/blob/master/LICENSE) in the source distribution of this software for license terms.
