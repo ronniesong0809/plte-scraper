@@ -1,5 +1,6 @@
 mod calendar;
 mod events;
+mod venues;
 use std::io::{stdin, stdout, Write};
 
 fn user_input() -> std::string::String {
@@ -21,6 +22,7 @@ fn main() {
     loop {
         println!("\n1. Scraping home page events data");
         println!("2. Scraping all events data");
+        println!("3. Scraping all venues data");
         println!("0. Exit");
 
         // use the > as the prompt
@@ -32,6 +34,7 @@ fn main() {
         match &*command {
             "1" => calendar::menu(),
             "2" => events::menu(),
+            "3" => venues::menu(),
             "0" => return,
             "q" => return,
             "quit" => return,
