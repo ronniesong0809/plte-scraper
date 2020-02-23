@@ -1,14 +1,7 @@
 mod calendar;
 mod events;
 mod venues;
-use std::io::{stdin, stdout, Write};
-
-fn user_input() -> std::string::String {
-    stdout().flush().unwrap();
-    let mut input = String::new();
-    stdin().read_line(&mut input).expect("Failed to read line");
-    input
-}
+mod common;
 
 fn main() {
     println!("
@@ -19,6 +12,7 @@ fn main() {
      |____|    |_______ \\|____|   /_______  /            \\______  /|____/|__|
                        \\/                 \\/                    \\/           ");
     println!("\t\t\t  - Portland Local Tech Events Command-line Tool Sets.");
+    println!("\n\n---- PLTE Menu ----");
     loop {
         println!("\n1. Scraping home page events data");
         println!("2. Scraping all events data");
@@ -28,7 +22,7 @@ fn main() {
         // use the > as the prompt
         print!("\n> ");
 
-        let input = user_input();
+        let input = common::user_input();
         let command = input.trim().split_whitespace().next().unwrap();
 
         match &*command {

@@ -3,14 +3,10 @@ extern crate mongodb;
 extern crate select;
 use bson::{bson, doc};
 use csv::Writer;
-use mongodb::{ options::ClientOptions, Client };
 use select::{ document::Document, predicate::Class };
 use serde::Deserialize;
-use std::error::Error;
-use std::fs::File;
-use std::io::BufReader;
-use std::io::{stdin, stdout, Write};
-use std::process;
+use std::{ error::Error, fs::File, process };
+use crate::common::{user_input, scraping, coll, read_file, display, search};
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]
@@ -25,21 +21,8 @@ struct Record {
     end: String,
 }
 
-#[tokio::main]
-async fn scraping() -> Result<reqwest::StatusCode, Box<dyn std::error::Error>> {
-    let response = reqwest::get("https://calagator.org").await?;
-    let status = response.status();
-    let body = response.text().await?;
-    // println!("{:?}", status);
-    // println!("{:?}", body);
-    let mut file = File::create("assets/calendar.html")?;
-    file.write_all(body.as_bytes())?;
-    file.sync_all()?;
-    Ok(status)
-}
-
 fn scraping_event() {
-    let html = scraping();
+    let html = scraping("https://calagator.org", "assets/calendar.html");
     match html {
         Ok(v) => {
             println!("\nResponse code: {}", v);
@@ -53,16 +36,7 @@ fn scraping_event() {
 #[allow(bare_trait_objects)]
 pub fn parse_date() -> Result<String, Box<Error>> {
     let mut wtr = Writer::from_path("assets/calendar.csv")?;
-    wtr.write_record(&[
-        "summary",
-        "location",
-        "days_of_week",
-        "month",
-        "day",
-        "year",
-        "start",
-        "end",
-    ])?;
+    wtr.write_record(&["summary","location","days_of_week","month","day","year","start","end",])?;
 
     let mut count = 0;
     let document = Document::from(include_str!("../assets/calendar.html"));
@@ -70,35 +44,19 @@ pub fn parse_date() -> Result<String, Box<Error>> {
         let summary = node.find(Class("summary")).next().unwrap().text();
         let location = node.find(Class("location")).next().unwrap().text();
         let days_of_week = node.find(Class("day_of_week")).next().unwrap().text();
-        let temp_date = node
-            .find(Class("list_date"))
-            .next()
-            .unwrap()
-            .last_child()
-            .unwrap()
-            .text();
+        let temp_date = node.find(Class("list_date")).next().unwrap().last_child().unwrap().text();
         let mut date = temp_date.split_ascii_whitespace();
         let month = date.next().unwrap();
         let day = date.next().unwrap();
         let year = date.next().unwrap();
         let start = node.find(Class("dtstart")).next().unwrap().text();
         let end = node.find(Class("dtend")).next().unwrap().text();
-
         println!("\n     summary: {}", summary);
         println!("    location: {}", location);
         println!("days_of_week: {}", days_of_week);
         println!("        date: {} {} {}", month, day, year);
         println!("        time: {} - {}", start, end);
-        wtr.write_record(&[
-            summary,
-            location,
-            days_of_week,
-            month.to_string(),
-            day.to_string(),
-            year.to_string(),
-            start,
-            end,
-        ])?;
+        wtr.write_record(&[summary,location,days_of_week,month.to_string(),day.to_string(),year.to_string(),start,end,])?;
         count += 1;
     }
     wtr.flush()?;
@@ -116,27 +74,8 @@ fn save_to_csv() {
     }
 }
 
-fn mongodb_driver() -> mongodb::Client {
-    let mut client_options = ClientOptions::parse("mongodb://localhost:27017").unwrap();
-    client_options.app_name = Some("My app".to_string());
-    Client::with_options(client_options).unwrap()
-}
-
-fn db() -> mongodb::Database {
-    let client = mongodb_driver();
-    client.database("foo")
-}
-
-fn coll() -> mongodb::Collection {
-    db().collection("calendar")
-}
-
-fn read_file(file: File) -> csv::Reader<std::io::BufReader<std::fs::File>> {
-    csv::Reader::from_reader(BufReader::new(file.try_clone().unwrap()))
-}
-
 fn insert(file: File) -> Result<String, Box<dyn Error>> {
-    let coll = coll();
+    let coll = coll("calendar");
     coll.delete_many(doc! {}, None)
         .expect("Failed to delete documents.");
 
@@ -161,42 +100,8 @@ fn import_to_mongodb() {
     }
 }
 
-fn display() {
-    let coll = coll();
-    let cursor = coll.find(None, None).unwrap();
-    for doc in cursor {
-        println!("{}", doc.unwrap());
-    }
-}
-
-fn search() {
-    print!("\nPlease enter: ");
-    let find_input = user_input();
-    let find = find_input.trim();
-    // print!("{}", find);
-    let coll = coll();
-    let filter = doc! { "summary": find };
-    // let find_options = FindOptions::builder()
-    //     .sort(doc! { "State": 1 })
-    //     .build();
-    let cursor = coll.find(filter, None).unwrap();
-
-    for result in cursor {
-        match result {
-            Ok(document) => println!("Document: {:?}", document),
-            Err(e) => println!("Error! {:?}", e),
-        }
-    }
-}
-
-fn user_input() -> std::string::String {
-    stdout().flush().unwrap();
-    let mut input = String::new();
-    stdin().read_line(&mut input).expect("Failed to read line");
-    input
-}
-
 pub fn menu() {
+    println!("\n\n---- Home Page Calendar Menu ----");
     loop {
         println!("\n1. Scraping home page events data");
         println!("2. Save events data to CSV");
@@ -215,8 +120,8 @@ pub fn menu() {
             "1" => scraping_event(),
             "2" => save_to_csv(),
             "3" => import_to_mongodb(),
-            "4" => display(),
-            "5" => search(),
+            "4" => display("calendar"),
+            "5" => search("calendar", "summary"),
             "0" => return,
             "q" => return,
             "quit" => return,
