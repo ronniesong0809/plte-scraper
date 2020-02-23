@@ -1,11 +1,11 @@
 extern crate csv;
 extern crate mongodb;
 extern crate select;
+use crate::common::{coll, display, read_file, scraping, search, user_input};
 use bson::{bson, doc};
 use csv::Writer;
 use serde::Deserialize;
-use std::{ error::Error, fs::File, process };
-use crate::common::{user_input, scraping, coll, read_file, display, search};
+use std::{error::Error, fs::File, process};
 
 #[derive(Debug, Deserialize)]
 #[allow(non_snake_case)]

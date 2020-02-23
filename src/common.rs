@@ -1,7 +1,10 @@
 extern crate mongodb;
 use bson::{bson, doc};
-use mongodb::{ options::ClientOptions, Client };
-use std::{ fs::File, io::{BufReader, stdin, stdout, Write} };
+use mongodb::{options::ClientOptions, Client};
+use std::{
+    fs::File,
+    io::{stdin, stdout, BufReader, Write},
+};
 
 #[tokio::main]
 pub async fn scraping(url: &str, dist: &str) -> Result<reqwest::StatusCode, Box<dyn std::error::Error>> {
@@ -39,7 +42,7 @@ pub fn display(coll_name: &str) {
     let coll = coll(coll_name);
     let cursor = coll.find(None, None).unwrap();
     for doc in cursor {
-        println!("{}", doc.unwrap());
+        println!("\n{}", doc.unwrap());
     }
 }
 
@@ -57,7 +60,7 @@ pub fn search(coll_name: &str, field: &str) {
 
     for result in cursor {
         match result {
-            Ok(document) => println!("Document: {:?}", document),
+            Ok(document) => println!("\nDocument: {:?}", document),
             Err(e) => println!("Error! {:?}", e),
         }
     }
@@ -68,7 +71,7 @@ pub fn user_input() -> std::string::String {
     let mut input = String::new();
     stdin().read_line(&mut input).expect("Failed to read line");
     // print!("{:?}", input);
-    if input=="\n"{
+    if input == "\n" {
         input = "0".to_string();
     }
     input

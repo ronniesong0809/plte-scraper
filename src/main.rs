@@ -1,7 +1,7 @@
 mod calendar;
+mod common;
 mod events;
 mod venues;
-mod common;
 
 fn main() {
     println!("
