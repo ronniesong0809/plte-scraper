@@ -26,14 +26,14 @@ struct Record {
     events_count: String,
 }
 
-fn scraping_event() {
+fn scraping_venue() {
     let html = scraping("https://calagator.org/venues.json", "assets/venues.json");
     match html {
         Ok(v) => {
             println!("\nResponse code: {}", v);
             println!("Successfully scraped venues to assets/venues.json");
         }
-        Err(e) => println!("error scraping events: {}", e),
+        Err(e) => println!("error scraping venues: {}", e),
     }
     process::exit(1);
 }
@@ -46,8 +46,8 @@ fn parse_date() -> Result<String, Box<Error>> {
     let mut wtr = Writer::from_path("assets/venues.csv")?;
     wtr.write_record(&["id","title","description","url","street_address","locality","region","postal_code","country","latitude","longitude","email","telephone","events_count"])?;
 
-    let mut count = 0;
-    for i in 0..100{
+    let length = data.as_array().unwrap().len();
+    for i in 0..length{
         let id = data[i].get("id").expect("unable to find id").to_string().replace("\"", "");
         let title = data[i].get("title").expect("unable to find title").to_string().replace("\"", "");
         let description = data[i].get("description").expect("unable to find description").to_string().replace("\"", "");
@@ -70,12 +70,10 @@ fn parse_date() -> Result<String, Box<Error>> {
         println!("       email: {}", email);
         println!("   telephone: {}", telephone);
         println!("events_count: {}", events_count);
-        wtr.write_record(&[id,title,description,url,street_address,locality,region,postal_code,country,
-        latitude,longitude,email,telephone,events_count])?;
-        count += 1;
+        wtr.write_record(&[id,title,description,url,street_address,locality,region,postal_code,country,latitude,longitude,email,telephone,events_count])?;
     }
     wtr.flush()?;
-    Ok(format!("\nSuccessfully saved {} events to assets/venues.csv", count))
+    Ok(format!("\nSuccessfully saved {} venues to assets/venues.csv", length))
 }
 
 fn save_to_csv() {
@@ -121,8 +119,8 @@ pub fn menu() {
         println!("\n1. Scraping all venues data");
         println!("2. Save first 100 venues data to CSV");
         println!("3. Import CSV to MongoDB");
-        println!("4. Read events from MongoDB");
-        println!("5. Search events from MongoDB");
+        println!("4. Read venues from MongoDB");
+        println!("5. Search venues from MongoDB");
         println!("0. Back");
 
         // use the > as the prompt
@@ -132,7 +130,7 @@ pub fn menu() {
         let command = input.trim().split_whitespace().next().expect("unexpected input");
 
         match &*command {
-            "1" => scraping_event(),
+            "1" => scraping_venue(),
             "2" => save_to_csv(),
             "3" => import_to_mongodb(),
             "4" => display("venues"),

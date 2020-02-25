@@ -40,8 +40,8 @@ fn parse_date() -> Result<String, Box<Error>> {
     let mut wtr = Writer::from_path("assets/events.csv")?;
     wtr.write_record(&["id","title","description","url","start_time","end_time","venue_id","venue_details"])?;
 
-    let mut count = 0;
-    for i in 0..100{
+    let length = data.as_array().unwrap().len();
+    for i in 0..length{
         let id = data[i].get("id").expect("unable to find id").to_string().replace("\"", "");
         let title = data[i].get("title").expect("unable to find title").to_string().replace("\"", "");
         let description = data[i].get("description").expect("unable to find description").to_string().replace("\"", "");
@@ -57,10 +57,9 @@ fn parse_date() -> Result<String, Box<Error>> {
         println!("     venue_id: {}", venue_id);
         println!("venue_details: {}", venue_details);
         wtr.write_record(&[id,title,description,url,start_time,end_time,venue_id,venue_details])?;
-        count += 1;
     }
     wtr.flush()?;
-    Ok(format!("\nSuccessfully saved {} events to assets/events.csv", count))
+    Ok(format!("\nSuccessfully saved {} events to assets/events.csv", length))
 }
 
 fn save_to_csv() {
